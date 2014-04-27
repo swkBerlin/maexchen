@@ -1,6 +1,6 @@
 # maexchen.simplebot
 
-A simple bot skeleton to play Mia. Please see https://github.com/janernsting/maexchen for details.
+A simple bot skeleton to play Mia. Please see https://github.com/swkBerlin/maexchen for details.
 
 ## Usage
 
