@@ -2,53 +2,67 @@ package main
 
 import (
 	"fmt"
-	"net"
-	"os"
+	"log"
 	"regexp"
 	"strings"
+	"net"
 	"time"
 )
 
-const servAddr = "localhost:9000"
+const serverAddr = "127.0.0.1:9000"
 
 func validName(input string) bool {
 	valid, _ := regexp.Compile(`[^\s,;:]{1,20}`)
 	return valid.MatchString(input)
 }
 
-func messageServer(conn *net.UDPConn, message string, out chan<- string) {
-	if len(message) > 0 {
-		_, err := conn.Write([]byte(message))
-		if err != nil {
-			println("Write to server failed:", err.Error())
-			os.Exit(1)
-		}
-		println("write to server = ", message)
+func newConnection() *net.UDPConn {
+	ra, err := net.ResolveUDPAddr("udp4", serverAddr)
+	if err != nil {
+		log.Fatalf("ResolveUDPAddr failed: %v", err.Error())
 	}
 
-	reply := make([]byte, 512)
-	n, _, err := conn.ReadFromUDP(reply[0:])
-	if n == 0 || err != nil {
-		println("Read from server failed:", err.Error())
-		os.Exit(1)
+	c, err := net.DialUDP("udp4", nil, ra)
+	if err != nil {
+		log.Fatalf("Dial failed: %v", err.Error())
 	}
 
-	out <- string(reply)
+	return c
 }
 
-func handleResponse(conn *net.UDPConn, response string, out chan<- string) {
-	fmt.Println(response)
+func readFromServer(c *net.UDPConn, out chan<- string) {
+	for {
+		reply := make([]byte, 1024)
+		n, _, err := c.ReadFromUDP(reply)
+		if n == 0 || err != nil {
+			log.Fatalf("Read from server failed: %v", err.Error())
+		}
+		reply = reply[:n]
+		log.Printf("Read %q", reply)
+
+		out <- string(reply)
+	}
+}
+
+func messageServer(c *net.UDPConn, message string) {
+	log.Printf("Write to server: %q", message)
+	n, err := c.Write([]byte(message))
+	if n == 0 || err != nil {
+		log.Fatalf("WriteToUDP failed: %v", err.Error())
+	}
+}
+
+func handleResponse(response string, out chan<- string) {
+	log.Printf("Read from server: %q", response)
 	parts := strings.Split(response, ";")
-	if strings.Contains(response, "REGISTERED") {
-		go func() { messageServer(conn, "", out) }()
+	if strings.Contains(response, "REJECTED") {
+		log.Fatalf("Registration request rejected.")
 	} else if strings.Contains(response, "ROUND STARTING") {
-		go func() { messageServer(conn, fmt.Sprintf("JOIN;%s", parts[1]), out) }()
+		out <- fmt.Sprintf("JOIN;%s", parts[1])
 	} else if strings.Contains(response, "YOUR TURN") {
-		go func() { messageServer(conn, fmt.Sprintf("ROLL;%s", parts[1]), out) }()
+		out <- fmt.Sprintf("ROLL;%s", parts[1])
 	} else if strings.Contains(response, "ROLLED") {
-		go func() { messageServer(conn, fmt.Sprintf("ANNOUNCE;%s;%s", parts[1], parts[2]), out) }()
-	} else {
-		go func() { messageServer(conn, "", out) }()
+		out <- fmt.Sprintf("ANNOUNCE;%s;%s", parts[1], parts[2])
 	}
 }
 
@@ -58,34 +72,27 @@ func main() {
 		fmt.Print(">>>> ")
 		_, err := fmt.Scanf("%s", &name)
 		if err != nil {
-			println("Reading username failed:", err.Error())
-			os.Exit(1)
+			log.Fatalf("Reading username failed:", err.Error())
 		}
 	}
 
-	msg := fmt.Sprintf("REGISTER;%s", name)
-	c := make(chan string)
-
-	udpAddr, err := net.ResolveUDPAddr("udp", servAddr)
-	if err != nil {
-		println("ResolveUDPAddr failed:", err.Error())
-		os.Exit(1)
-	}
-
-	conn, err := net.DialUDP("udp", nil, udpAddr)
-	if err != nil {
-		println("Dial failed:", err.Error())
-		os.Exit(1)
-	}
+	conn := newConnection()
 	defer conn.Close()
 
-	go func() { messageServer(conn, msg, c) }()
+	msg := fmt.Sprintf("REGISTER;%s", name)
+	replies := make(chan string)
+	messages := make(chan string)
+
+	go readFromServer(conn, replies)
+	messageServer(conn, msg)
 
 	for {
 		timeout := time.After(30 * time.Second)
 		select {
-		case answer := <-c:
-			handleResponse(conn, answer, c)
+		case answer := <-replies:
+			go handleResponse(answer, messages)
+		case message := <-messages:
+			messageServer(conn, message)
 		case <-timeout:
 			fmt.Println("timed out")
 			return
