@@ -4,11 +4,27 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>udp-helper</groupId>
-    <artifactId>udp-helper</artifactId>
+    <groupId>de.andrena</groupId>
+    <artifactId>swing-spectator</artifactId>
     <version>1.0</version>
 
     <dependencies>
+        <dependency>
+            <groupId>udp-helper</groupId>
+            <artifactId>udp-helper</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.miglayout</groupId>
+            <artifactId>miglayout</artifactId>
+            <version>[3.7,3.8]</version>
+            <classifier>swing</classifier>
+        </dependency>
+        <dependency>
+            <groupId>jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>[1.0,1.1]</version>
+        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

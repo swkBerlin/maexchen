@@ -1,11 +1,11 @@
 package spectator;
 
-import java.awt.EventQueue;
-import java.io.IOException;
-
-import javax.swing.UIManager;
 
 import udphelper.UdpCommunicator;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.IOException;
 
 public class Main {
 	
