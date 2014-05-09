@@ -12,7 +12,7 @@ import (
 const serverAddr = "127.0.0.1:9000"
 
 func validName(input string) bool {
-	valid, _ := regexp.Compile(`[^\s,;:]{1,20}`)
+	valid, _ := regexp.Compile(`^[^\s,;:]{1,20}$`)
 	return valid.MatchString(input)
 }
 
@@ -72,7 +72,7 @@ func main() {
 		fmt.Print(">>>> ")
 		_, err := fmt.Scanf("%s", &name)
 		if err != nil {
-			log.Fatalf("Reading username failed:", err.Error())
+			log.Fatalf("Reading username failed: %v", err.Error())
 		}
 	}
 
@@ -99,3 +99,5 @@ func main() {
 		}
 	}
 }
+
+
